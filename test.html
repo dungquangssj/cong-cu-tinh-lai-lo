@@ -58,7 +58,7 @@
             text-align: center;
             font-size: 1.5rem;
             font-weight: 700;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
             letter-spacing: 0.5px;
         }
         .accordion-item {
@@ -236,10 +236,11 @@
                                     <div class="input-group"><label class="input-label">Thời gian vay (tháng)</label><input type="text" id="thoiGianVay" class="input-field number-input" value="3"></div>
                                 </div>
                                  <div>
-                                    <h4 class="font-semibold text-gray-600 mb-2">Thuế suất</h4>
+                                    <h4 class="font-semibold text-gray-600 mb-2">Thuế suất & Ngưỡng an toàn</h4>
                                     <div class="input-group"><label class="input-label">VAT hàng mua (%)</label><input type="text" id="vatMua" class="input-field number-input" value="10"></div>
                                     <div class="input-group"><label class="input-label">VAT hàng bán (%)</label><input type="text" id="vatBan" class="input-field number-input" value="8"></div>
                                     <div class="input-group"><label class="input-label">Thuế TNDN (%)</label><input type="text" id="thueTNDN" class="input-field number-input" value="20"></div>
+                                    <div class="input-group"><label class="input-label">Tỷ suất LN tối thiểu (%)</label><input type="text" id="tySuatLNToiThieu" class="input-field number-input" value="3"></div>
                                  </div>
                             </div>
                         </div>
@@ -300,6 +301,13 @@
                                         <p class="mt-1"><b>VAT đầu vào</b> = (Tổng chi phí có VAT) × Thuế suất VAT mua %.</p>
                                     </div>
                                 </li>
+                                <li>
+                                    <p class="formula-title">Điều kiện thực hiện HĐ (Tỷ suất Lợi nhuận)</p>
+                                    <p class="formula-expression">(Lợi nhuận trước thuế ÷ Doanh thu thuần) ≥ Ngưỡng tối thiểu</p>
+                                    <div class="formula-detail">
+                                       <p>Đây là một chỉ số quan trọng để đánh giá hiệu quả của hợp đồng. Công thức này kiểm tra xem tỷ suất lợi nhuận trước thuế trên doanh thu có đạt ngưỡng an toàn hay không.</p>
+                                    </div>
+                                </li>
                             </ul>
                         </div>
                     </div>
@@ -313,6 +321,14 @@
                 <div class="result-card">
                     <h2 class="text-2xl font-bold text-gray-800 mb-2 text-center">Bảng phân tích Lãi/Lỗ</h2>
                     <div id="final-result"></div>
+                    <!-- KPI Card -->
+                    <div id="kpi-section" class="mb-4">
+                        <div id="profit-margin-check" class="flex justify-between items-center p-3 rounded-lg">
+                            <span class="font-semibold text-sm">Tỷ suất LN Trước thuế</span>
+                            <span id="res-tySuatLoiNhuan" class="font-bold text-lg"></span>
+                        </div>
+                    </div>
+
                     <div class="space-y-1">
                         <div class="result-item pt-0">
                             <span class="result-label font-medium text-blue-600">Doanh thu thuần</span>
@@ -358,7 +374,6 @@
             const numberInputs = document.querySelectorAll('.number-input');
 
             const formatNumber = (n) => {
-                // Ensure n is a number and not NaN before formatting
                 const num = Number(n);
                 if (isNaN(num)) return '0';
                 return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -369,24 +384,18 @@
             };
 
             numberInputs.forEach(input => {
-                // Initialize formatting
                 input.value = formatNumber(parseNumber(input.value));
-
                 input.addEventListener('input', (e) => {
                     const cursorPosition = e.target.selectionStart;
                     const originalLength = e.target.value.length;
-                    
                     const rawValue = e.target.value.replace(/[^0-9.]/g, '');
-                                        
                     const formattedValue = formatNumber(rawValue);
                     if (e.target.value !== formattedValue) {
                       e.target.value = formattedValue;
-                      
                       const newLength = e.target.value.length;
                       const newCursorPosition = cursorPosition + (newLength - originalLength);
                       e.target.setSelectionRange(newCursorPosition, newCursorPosition);
                     }
-
                     calculate();
                 });
             });
@@ -441,14 +450,13 @@
                 const cpHoaHong = getValue('cpHoaHong');
                 const cpKhac = getValue('cpKhac');
                 
-                // --- Tính chi phí lương theo logic mới ---
                 const tongLuongThang = getValue('tongLuongThang');
                 const phanBoLuongPercent = getValue('phanBoLuong') / 100;
                 const thoiGianThucHien = getValue('thoiGianThucHien');
                 const cpLuongThuong = (tongLuongThang / 30) * thoiGianThucHien * phanBoLuongPercent;
                 document.getElementById('cpLuongHienThi').textContent = formatNumber(Math.round(cpLuongThuong));
 
-                const giaVon = giaMua * soLuong + cpThuMua; // Gộp chi phí thu mua vào giá vốn
+                const giaVon = giaMua * soLuong + cpThuMua;
                 const chiPhiHoatDong = cpHangMau + cpDongGoi + cpVanChuyen + cpThanhToan + cpKiemSoatCL + cpXuatNhapKhau + cpHoaHong + cpLuongThuong + cpKhac;
                 
                 // TÀI CHÍNH & THUẾ
@@ -458,6 +466,7 @@
                 const vatMuaPercent = getValue('vatMua') / 100;
                 const vatBanPercent = getValue('vatBan') / 100;
                 const thueTNDNPercent = getValue('thueTNDN') / 100;
+                const tySuatLNToiThieu = getValue('tySuatLNToiThieu');
 
                 const chiPhiVon = vonVay * (laiSuatNam / 12) * thoiGianVayThang;
                 const tongChiPhi = giaVon + chiPhiHoatDong + chiPhiVon;
@@ -494,6 +503,21 @@
                     finalResultEl.className = 'bg-red-100 text-red-800';
                 }
                 finalResultEl.classList.add('p-5', 'rounded-lg', 'text-center', 'text-xl', 'font-bold', 'mb-4');
+                
+                // KPI: Tỷ suất lợi nhuận trước thuế
+                const tySuatLoiNhuan = doanhThuThuan !== 0 ? (loiNhuanTruocThue / doanhThuThuan) * 100 : 0;
+                const profitMarginCheckEl = document.getElementById('profit-margin-check');
+                const profitMarginValueEl = document.getElementById('res-tySuatLoiNhuan');
+
+                profitMarginValueEl.textContent = `${tySuatLoiNhuan.toFixed(2)}%`;
+
+                if (tySuatLoiNhuan >= tySuatLNToiThieu) {
+                    profitMarginCheckEl.className = 'flex justify-between items-center p-3 rounded-lg bg-green-50 text-green-800';
+                    profitMarginValueEl.innerHTML += ' <i class="fa-solid fa-circle-check ml-2"></i>';
+                } else {
+                    profitMarginCheckEl.className = 'flex justify-between items-center p-3 rounded-lg bg-red-50 text-red-800';
+                    profitMarginValueEl.innerHTML += ' <i class="fa-solid fa-circle-xmark ml-2"></i>';
+                }
             };
             
             // Gắn sự kiện tính toán cho tất cả các input
